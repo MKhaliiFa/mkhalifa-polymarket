@@ -43,9 +43,25 @@ systemctl restart mkhalifa-polymarket.service
 
 echo
 echo "== live check (what this server sees)"
-runuser -u pmbot -- bash -c "cd $D/repo && set -a && . ./config.env && . $D/.env && set +a && python3 -m pmbot.main --check" || true
+CHECK=$(runuser -u pmbot -- bash -c "cd $D/repo && set -a && . ./config.env && . $D/.env && set +a && python3 -m pmbot.main --check" 2>&1 || true)
+echo "$CHECK"
 echo
 sleep 5
-echo "== paper bot: $(systemctl is-active mkhalifa-polymarket.service)"
-echo "== live bot container: $(docker inspect -f '{{.State.Status}}' mkhalifa-bot 2>/dev/null || echo 'not found')"
+PM=$(systemctl is-active mkhalifa-polymarket.service || true)
+LIVE=$(docker inspect -f '{{.State.Status}}' mkhalifa-bot 2>/dev/null || echo 'not found')
+echo "== paper bot: $PM"
+echo "== live bot container: $LIVE"
 echo "DONE. First report: tomorrow 09:01 Cairo."
+
+# one confirmation message on Telegram (the owner may not see this console)
+TOK=$(grep "^TELEGRAM_BOT_TOKEN=" "$D/.env" | cut -d= -f2- || true)
+CHAT=$(grep "^TELEGRAM_CHAT_ID=" "$D/.env" | cut -d= -f2- || true)
+if [ -n "$TOK" ] && [ -n "$CHAT" ]; then
+  SUMMARY=$(echo "$CHECK" | { grep -E '^(OK|FAIL|ALL|SOME|Telegram)' | sed -E 's/[<>&]//g; s/(book: ).*/\1ok/' || true; } | cut -c1-120)
+  MSG="🎯 <b>Polymarket paper bot installed</b> (no real money)
+Paper bot: $PM · live bot: $LIVE
+<code>$SUMMARY</code>
+Daily report from tomorrow at 09:01."
+  curl -s -m 20 -o /dev/null "https://api.telegram.org/bot$TOK/sendMessage" \
+    --data-urlencode "chat_id=$CHAT" --data-urlencode "parse_mode=HTML" --data-urlencode "text=$MSG" || true
+fi
