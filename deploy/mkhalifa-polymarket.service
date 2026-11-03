@@ -1,0 +1,28 @@
+[Unit]
+Description=MKhaliFa Polymarket paper bot (no real money, separate from the live bot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pmbot
+Group=pmbot
+WorkingDirectory=/opt/mkhalifa-polymarket/repo
+EnvironmentFile=/opt/mkhalifa-polymarket/repo/config.env
+EnvironmentFile=/opt/mkhalifa-polymarket/.env
+EnvironmentFile=-/opt/mkhalifa-polymarket/override.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m pmbot.main
+Restart=always
+RestartSec=15
+# stay small so the live bot always comes first
+Nice=10
+CPUQuota=30%
+MemoryMax=300M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/mkhalifa-polymarket/data
+
+[Install]
+WantedBy=multi-user.target

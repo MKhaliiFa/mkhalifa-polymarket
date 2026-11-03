@@ -1,0 +1,6 @@
+[Unit]
+Description=Update the Polymarket paper bot from GitHub
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/mkhalifa-polymarket/repo/deploy/update.sh

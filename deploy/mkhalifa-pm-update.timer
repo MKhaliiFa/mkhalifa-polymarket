@@ -1,0 +1,9 @@
+[Unit]
+Description=Check GitHub for a new Polymarket paper bot version every 10 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
