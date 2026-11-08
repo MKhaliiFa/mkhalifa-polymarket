@@ -189,3 +189,16 @@ class EngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryTest(unittest.TestCase):
+    def test_summary_numbers(self):
+        from pmbot.config import Config
+        from pmbot.report import summary
+        from pmbot.store import Store
+        st = Store(":memory:")
+        st.run("INSERT INTO trades(asset,slug,side,ts,tau,price,shares,stake,fee,fair,edge,status,won,pnl,settled_ts) "
+               "VALUES('btc','s','up',1,1,0.5,10,5,0.01,0.6,0.1,'closed',1,4.9,100)")
+        s = summary(st, Config(), 200.0)
+        self.assertEqual(s["all"]["n"], 1)
+        self.assertEqual(s["curve"][-1][1], round(Config().start_bankroll + 4.9, 2))

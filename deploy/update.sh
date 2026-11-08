@@ -5,6 +5,14 @@
 set -uo pipefail
 D=/opt/mkhalifa-polymarket
 cd "$D/repo" || exit 1
+# dashboard numbers for the MKhaliFa dashboard (read as pmbot, so the database keeps its owner)
+OUT=/opt/mkhalifa/data/labs
+mkdir -p "$OUT"
+if runuser -u pmbot -- bash -c "cd $D/repo && set -a && . ./config.env && set +a && python3 -m pmbot.main --summary" > "$OUT/polymarket.json.tmp" 2>/dev/null; then
+  mv -f "$OUT/polymarket.json.tmp" "$OUT/polymarket.json"; chmod 644 "$OUT/polymarket.json"
+else
+  rm -f "$OUT/polymarket.json.tmp"
+fi
 git fetch -q origin main || exit 0
 NEW=$(git rev-parse origin/main)
 OLD=$(git rev-parse HEAD)

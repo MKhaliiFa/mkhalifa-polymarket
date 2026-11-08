@@ -80,3 +80,24 @@ def verdict(s: dict, days_on: float) -> str:
     if win_ok:
         return "profitable but the model does not beat the market yet: keep watching"
     return "no edge after fees: do not go live"
+
+
+def summary(store, cfg, now: float) -> dict:
+    """Plain numbers for the MKhaliFa dashboard (the update timer copies them next to the bot's data)."""
+    day, allt = _stats(store, now - 86400), _stats(store, 0)
+    started = float(store.meta("started") or now)
+    days_on = max((now - started) / 86400, 0)
+    bank = cfg.start_bankroll + store.realized()
+    recent = [dict(r) for r in store.q(
+        "SELECT asset, side, ts, price, stake, edge, status, won, pnl, settled_ts FROM trades ORDER BY id DESC LIMIT 12")]
+    curve = [dict(r) for r in store.q(
+        "SELECT settled_ts ts, pnl FROM trades WHERE status='closed' ORDER BY settled_ts")]
+    eq, pts = cfg.start_bankroll, []
+    for r in curve:
+        eq += float(r["pnl"] or 0)
+        pts.append([round(float(r["ts"])), round(eq, 2)])
+    return {"ts": now, "name": "Polymarket", "kind": "paper", "assets": list(cfg.assets), "days": round(days_on, 2),
+            "bankroll": round(bank, 2), "start": cfg.start_bankroll, "day": day, "all": allt,
+            "open": store.one("SELECT COUNT(*) n FROM trades WHERE status='open'")["n"],
+            "errors_24h": store.one("SELECT COUNT(*) n FROM errors WHERE ts>=?", now - 86400)["n"],
+            "verdict": verdict(allt, days_on), "recent": recent, "curve": pts[-400:]}

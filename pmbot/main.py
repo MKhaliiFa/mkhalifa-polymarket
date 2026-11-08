@@ -2,6 +2,7 @@
   python3 -m pmbot.main            run the paper bot forever (systemd does this)
   python3 -m pmbot.main --check    one live round: prints what the server sees, then exits
   python3 -m pmbot.main --report   print today's report text (does not send it)
+  python3 -m pmbot.main --summary  print the dashboard numbers as JSON (read only)
 """
 from __future__ import annotations
 
@@ -58,6 +59,12 @@ def main(argv: list[str]) -> int:
     cfg = Config()
     if "--check" in argv:
         return check(cfg)
+    if "--summary" in argv:
+        import json
+        from .report import summary
+        st = Store(os.path.join(cfg.data_dir, "pm.db"))
+        print(json.dumps(summary(st, cfg, time.time()), default=str))
+        return 0
     if "--report" in argv:
         e = build(cfg)
         print(daily_report(e, time.time()))
