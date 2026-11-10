@@ -37,36 +37,21 @@ def daily_report(engine, now: float) -> str:
     days_on = max((now - started) / 86400, 0)
     errs = st.one("SELECT COUNT(*) n FROM errors WHERE ts>=?", now - 86400)["n"]
     openn = st.one("SELECT COUNT(*) n FROM trades WHERE status='open'")["n"]
-    geo = st.meta("geoblock", "?:?")
-    country, state = (geo.split(":") + ["?"])[:2]
     date = datetime.fromtimestamp(now, engine.tz).strftime("%a %d %b")
-    assets = ", ".join(a.upper() for a in cfg.assets)
 
-    L = [f"🎯 <b>Polymarket · {escape(date)}</b> (PAPER, no real money)", "─────────────"]
-    L.append(f"Watched {day['windows']} windows · {escape(assets)} 15m")
+    L = [f"🎯 <b>Polymarket · {escape(date)}</b> (PAPER)"]
     if day["n"]:
-        L.append(f"Trades {day['n']} · won {day['w']} · lost {day['n'] - day['w']} "
-                 f"({day['w'] / day['n']:.0%})")
-        L.append(f"P&amp;L {_usd(day['pnl'])} after fees {_usd(day['fees'], False)} · avg edge {day['edge'] * 100:.1f}¢")
+        L.append(f"24 h: {day['n']} trades · {day['w'] / day['n']:.0%} won · <b>{_usd(day['pnl'])}</b>"
+                 f" (fees {_usd(day['fees'], False)})")
     else:
-        L.append("No trade passed the rules in the last 24 h")
+        L.append(f"24 h: No trade passed the rules ({day['windows']} windows watched)")
     if day["bm"] is not None:
-        better = "model better ✅" if day["bm"] < day["bk"] else "market better ❌"
-        L.append(f"Model vs market (Brier, lower wins): {day['bm']:.3f} vs {day['bk']:.3f} · {better}")
-    if day["chk_n"]:
-        L.append(f"Binance matched Polymarket's result {day['chk_ok']}/{day['chk_n']}")
-    L.append("")
-    L.append(f"<b>Since start</b> ({days_on:.1f} days): {allt['n']} trades"
-             + (f", {allt['w'] / allt['n']:.0%} won" if allt["n"] else "")
-             + f" · {_usd(allt['pnl'])} · bankroll {_usd(engine.bankroll(), False)} of {_usd(cfg.start_bankroll, False)}")
-    if allt["bm"] is not None:
-        L.append(f"Model vs market: {allt['bm']:.3f} vs {allt['bk']:.3f} over {allt['cal_n']} windows")
-    if openn:
-        L.append(f"Open now: {openn}")
-    L.append("")
+        L.append(f"Model vs market: {day['bm']:.3f} vs {day['bk']:.3f} " + ("✅" if day["bm"] < day["bk"] else "❌"))
+    L.append(f"Since start ({days_on:.1f} d): {allt['n']} trades · {_usd(allt['pnl'])} · "
+             f"bankroll {_usd(engine.bankroll(), False)}" + (f" · open {openn}" if openn else ""))
     L.append(f"Verdict: {escape(verdict(allt, days_on))}")
-    gl = "orders blocked here (fine for paper)" if state == "blocked" else "orders allowed"
-    L.append(f"Server {escape(country)}: {gl}" + (f" · feed errors {errs}" if errs else ""))
+    if errs:
+        L.append(f"⚠️ feed errors {errs}")
     return "\n".join(L)
 
 
