@@ -63,7 +63,16 @@ def main(argv: list[str]) -> int:
         import json
         from .report import summary
         st = Store(os.path.join(cfg.data_dir, "pm.db"))
-        print(json.dumps(summary(st, cfg, time.time()), default=str))
+        out = summary(st, cfg, time.time())
+        lab = os.path.join(cfg.data_dir, "lab.db")
+        if os.path.exists(lab):                # the strategy lab's numbers ride along to the dashboard
+            try:
+                from pmlab.common import LabStore
+                from pmlab.runner import summary as lab_summary
+                out["lab"] = lab_summary(LabStore(lab), time.time())
+            except Exception as e:
+                out["lab"] = {"error": f"{type(e).__name__}"}
+        print(json.dumps(out, default=str))
         return 0
     if "--report" in argv:
         e = build(cfg)
