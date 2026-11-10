@@ -23,9 +23,11 @@ if ! python3 -m unittest -q >/dev/null 2>&1; then
   echo "update $NEW failed its tests; kept $OLD"
   exit 1
 fi
-for u in mkhalifa-polymarket.service mkhalifa-pm-update.service mkhalifa-pm-update.timer; do
+for u in mkhalifa-polymarket.service mkhalifa-pm-lab.service mkhalifa-pm-update.service mkhalifa-pm-update.timer; do
   cmp -s "deploy/$u" "/etc/systemd/system/$u" || { install -m 644 "deploy/$u" /etc/systemd/system/; RELOAD=1; }
 done
 [ "${RELOAD:-0}" = 1 ] && systemctl daemon-reload
 systemctl restart mkhalifa-polymarket.service
+systemctl enable mkhalifa-pm-lab.service >/dev/null 2>&1 || true
+systemctl restart mkhalifa-pm-lab.service
 echo "updated $OLD -> $NEW"

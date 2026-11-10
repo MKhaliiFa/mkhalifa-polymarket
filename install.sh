@@ -35,10 +35,11 @@ chmod 600 "$D/.env"
 (cd "$D/repo" && python3 -m unittest -q 2>&1 | tail -2)
 
 install -m 644 "$D/repo/deploy/mkhalifa-polymarket.service" /etc/systemd/system/
+install -m 644 "$D/repo/deploy/mkhalifa-pm-lab.service" /etc/systemd/system/
 install -m 644 "$D/repo/deploy/mkhalifa-pm-update.service" /etc/systemd/system/
 install -m 644 "$D/repo/deploy/mkhalifa-pm-update.timer" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now mkhalifa-polymarket.service mkhalifa-pm-update.timer >/dev/null 2>&1
+systemctl enable --now mkhalifa-polymarket.service mkhalifa-pm-lab.service mkhalifa-pm-update.timer >/dev/null 2>&1
 systemctl restart mkhalifa-polymarket.service
 
 echo

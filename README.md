@@ -42,6 +42,24 @@ main bot's commands are untouched.
 - The live bot's folder, container and timers are never changed.
 - Polymarket blocks new orders from Germany; that does not matter for paper trading.
 
+## Strategy lab (paper, since 2026-11-10)
+
+A second service (`mkhalifa-pm-lab`, package `pmlab/`) measures three more ways people make money on
+Polymarket, with public data only. Rules and verdicts are fixed in advance in [LAB_RULES.md](LAB_RULES.md).
+
+| # | Strategy | What is measured |
+|---|---|---|
+| S1 | Multi-outcome arbitrage | negRisk events whose outcomes cost less than they pay, re-checked 5 s later |
+| S2 | Market making on reward markets | quotes at mid ± half the reward spread, filled only by public trades through them |
+| S4 | Copy the best wallets | the month's top directional wallets, copied at our own price after the delay |
+
+S3 is the bot above. Each strategy gets a PASS or FAIL after 14 days; its line is in the 09:01 report.
+
+```bash
+cd /opt/mkhalifa-polymarket/repo && sudo -u pmbot bash -c 'set -a; . ./config.env; python3 -m pmlab.runner --summary'
+journalctl -u mkhalifa-pm-lab -n 50
+```
+
 ## Server
 
 ```bash
