@@ -52,7 +52,22 @@ def daily_report(engine, now: float) -> str:
     L.append(f"Verdict: {escape(verdict(allt, days_on))}")
     if errs:
         L.append(f"⚠️ feed errors {errs}")
+    L += lab_lines(cfg, now)
     return "\n".join(L)
+
+
+def lab_lines(cfg, now: float) -> list[str]:
+    """The strategy lab's four lines (its own service and database), when it runs."""
+    import os
+    path = os.path.join(cfg.data_dir, "lab.db")
+    if not os.path.exists(path):
+        return []
+    try:
+        from pmlab.common import LabStore
+        from pmlab.runner import report_lines, summary
+        return [""] + report_lines(summary(LabStore(path), now))
+    except Exception:
+        return []
 
 
 def verdict(s: dict, days_on: float) -> str:
