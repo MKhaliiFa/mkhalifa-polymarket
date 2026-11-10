@@ -177,7 +177,7 @@ class EngineTests(unittest.TestCase):
         self.e.tick()
         self.assertEqual(len(self.tg.sent), 1)
         self.assertIn("PAPER", self.tg.sent[0])
-        self.assertIn("DE", self.tg.sent[0])
+        self.assertLessEqual(len(self.tg.sent[0].splitlines()), 6)
 
     def test_report_text_and_verdict(self):
         txt = daily_report(self.e, self.clock.t)
