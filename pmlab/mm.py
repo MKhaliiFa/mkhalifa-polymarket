@@ -15,6 +15,14 @@ def day_of(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d")
 
 
+def reward_score(v: float, dist: float, size: float) -> float:
+    """Polymarket's liquidity-reward weight of one resting order: ((v - s) / v)^2 x size, where s is its distance
+    from the mid and v the market's max spread. An order at the edge of the band earns far less than one at the mid."""
+    if v <= 0 or dist >= v or size <= 0:
+        return 0.0
+    return ((v - dist) / v) ** 2 * size
+
+
 def yes_terms(trade: dict, yes: str) -> tuple[str, float] | None:
     """A taker trade as ('buy'|'sell', price) on the YES token (the book is shared by YES and NO)."""
     try:
@@ -138,10 +146,10 @@ class MM:
             mid = (book["bids"][0][0] + book["asks"][0][0]) / 2
         rew = b["rewards_est"]
         if q and q.get("ts") and b["active"]:                  # reward share earned while the last quote rested
-            half, sz = info["max_spread"], info["size"]
-            others = sum(s for p, s in book.get("bids", []) if p >= mid - half) + \
-                sum(s for p, s in book.get("asks", []) if p <= mid + half)
-            share = (2 * sz) / (2 * sz + others) if others >= 0 else 0.0
+            v, sz = info["max_spread"], info["size"]
+            others = sum(reward_score(v, abs(p - mid), s) for p, s in book.get("bids", []) + book.get("asks", []))
+            ours = sum(reward_score(v, abs(q[k] - mid), sz) for k in ("bid", "ask") if q.get(k) is not None)
+            share = ours / (ours + others) if ours + others > 0 else 0.0
             rew += info["daily"] * share * min(now - float(q["ts"]), 3600) / 86400
         tick, half, sz = info["tick"], info["max_spread"] / 2, info["size"]
         nq = None
@@ -177,7 +185,8 @@ class MM:
         cash = sum(r["cash"] + r["rebates"] for r in rows)
         inv_val = sum(r["inv"] * r["mid"] for r in rows)
         rew = sum(r["rewards_est"] for r in rows)
-        cap = sum(self.cfg.mm_inv_mult * json.loads(r["info"])["size"] for r in rows if r["active"])
+        cap = sum(self.cfg.mm_inv_mult * json.loads(r["info"])["size"] * max(r["mid"], 1 - r["mid"])
+                  for r in rows if r["active"])                 # dollars at risk, not shares
         self.store.run("INSERT INTO mm_marks VALUES(?,?,?,?,?,?)", now, day_of(now), cash, inv_val, rew, cap)
 
 
@@ -207,7 +216,8 @@ def summary(store, since: float) -> dict:
     rew = 0.5 * (marks[-1]["rewards_est"] - (base["rewards_est"] if base else 0.0))
     fills = store.one("SELECT COUNT(*) n FROM mm_fills WHERE ts>=?", since)["n"]
     cap = max(m["capital"] for m in marks)
-    return {"net": net, "days_up": up, "days": len(days), "dd": dd, "rew_share": rew / net if net > 0 else 1.0,
+    spread = net - rew
+    return {"net": net, "spread_pnl": spread, "rewards_counted": rew, "days_up": up, "days": len(days), "dd": dd, "rew_share": rew / net if net > 0 else 1.0,
             "fills": fills, "capital": cap}
 
 

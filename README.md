@@ -42,6 +42,9 @@ main bot's commands are untouched.
 - The live bot's folder, container and timers are never changed.
 - Polymarket blocks new orders from Germany; that does not matter for paper trading.
 
+> **2026-11-11:** the 15-minute bot reached its verdict after 209 paper trades: **no edge after fees**. It opens no new
+> paper trades (`PM_TRADE=0`); its history stays in the report. The strategy lab below keeps running.
+
 ## Strategy lab (paper, since 2026-11-10)
 
 A second service (`mkhalifa-pm-lab`, package `pmlab/`) measures three more ways people make money on

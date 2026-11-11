@@ -15,6 +15,8 @@ from . import arb, copy, mm
 from .common import FeedError, LabConfig, LabStore
 
 STRATS = ("arb", "mm", "copy")
+RULES_VERSION = 2          # 2 (2026-11-11): S1 skips events with an outcome already resolved YES; S2 rewards use
+#                            Polymarket's quadratic score. S1 and S2 restarted; S4 unchanged.
 
 
 def db_path(cfg: LabConfig) -> str:
@@ -28,6 +30,12 @@ class Lab:
         self.arb = arb.Arb(cfg, store, sleep=sleep, clock=clock, **kw)
         self.mm = mm.MM(cfg, store, clock=clock, **kw)
         self.copy = copy.Copy(cfg, store, clock=clock, **kw)
+        if int(store.meta("rules_version", 1)) < RULES_VERSION:      # a changed rule restarts that strategy's clock
+            for t in ("arb", "mm_fills", "mm_marks", "mm_book"):
+                store.run(f"DELETE FROM {t}")
+            for k in ("started_arb", "started_mm", "mm_selected"):
+                store.run("DELETE FROM meta WHERE k=?", k)
+            store.set_meta("rules_version", RULES_VERSION)
         for s in STRATS:
             if store.meta(f"started_{s}") is None:
                 store.set_meta(f"started_{s}", clock())
@@ -70,7 +78,8 @@ def report_lines(s: dict) -> list[str]:
     a, m, c = s["arb"], s["mm"], s["copy"]
     out = ["🧪 <b>Lab</b> (paper)",
            f"S1 arbitrage: {a['captured']} captured {usd(a['profit'])} · 24 h {a['day']['captured']} · {a['verdict']}",
-           f"S2 market making: {usd(m['net'])} · {m['fills']} fills · {m['verdict']}",
+           f"S2 market making: {usd(m['net'])} (spread {usd(m.get('spread_pnl', 0))}, rewards est. "
+           f"{usd(m.get('rewards_counted', 0))}) · {m['fills']} fills · {m['verdict']}",
            f"S4 copy: {c['closed']} closed {usd(c['pnl'])} · open {c['open']} · {c['verdict']}"]
     if s.get("errors_24h"):
         out.append(f"⚠️ lab errors 24 h: {s['errors_24h']}")

@@ -122,7 +122,8 @@ class Engine:
             self._maybe_trade(now, a, w, slug, p_up, tau, up, dn)
 
     def _maybe_trade(self, now, asset, w, slug, p_up, tau, up, dn):
-        if self.store.one("SELECT 1 FROM trades WHERE slug=?", slug) or self.stopped_today(now):
+        if not getattr(self.cfg, "trade", True) or self.store.one("SELECT 1 FROM trades WHERE slug=?", slug) \
+                or self.stopped_today(now):
             return
         sig = model.best_signal(p_up, {"Up": up.get("ask"), "Down": dn.get("ask")}, tau, self.cfg)
         if not sig:
