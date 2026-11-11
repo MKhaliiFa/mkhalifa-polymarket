@@ -175,3 +175,29 @@ class RunnerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Version2Test(unittest.TestCase):
+    def test_arb_leaves_out_an_event_with_a_resolved_yes(self):
+        ev = neg_event([0.3] * 4)
+        ev["markets"][0].update(closed=True, outcomePrices=json.dumps(["1", "0"]))
+        self.assertIsNone(arb.legs_of(ev))
+        ev["markets"][0].update(outcomePrices=json.dumps(["0", "1"]))
+        self.assertEqual(len(arb.legs_of(ev)), 3)
+
+    def test_reward_score_is_quadratic(self):
+        self.assertAlmostEqual(mm.reward_score(0.04, 0.0, 100), 100)
+        self.assertAlmostEqual(mm.reward_score(0.04, 0.02, 100), 25)     # at half the band: a quarter
+        self.assertEqual(mm.reward_score(0.04, 0.04, 100), 0.0)
+
+    def test_a_rule_change_restarts_s1_and_s2_only(self):
+        st = LabStore(":memory:")
+        st.set_meta("started_arb", 1.0)
+        st.set_meta("started_copy", 1.0)
+        st.run("INSERT INTO arb(ts,event_id,captured,profit_counted) VALUES(1,'e',1,5)")
+        st.run("INSERT INTO copies(ts,leader,token) VALUES(1,'w','T')")
+        Lab(LabConfig(), st, get=Router({}), clock=lambda: 500.0)
+        self.assertEqual(st.one("SELECT COUNT(*) n FROM arb")["n"], 0)
+        self.assertEqual(st.one("SELECT COUNT(*) n FROM copies")["n"], 1)
+        self.assertEqual(float(st.meta("started_arb")), 500.0)
+        self.assertEqual(float(st.meta("started_copy")), 1.0)

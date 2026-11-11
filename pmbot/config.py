@@ -20,6 +20,7 @@ def _s(name: str, default: str) -> str:
 class Config:
     assets: list[str] = field(default_factory=lambda: [a.strip().lower() for a in _s("PM_ASSETS", "btc,eth").split(",") if a.strip()])
     window_s: int = int(_f("PM_WINDOW_S", 900))          # 15-minute markets
+    trade: bool = _f("PM_TRADE", 1) > 0                   # 0 = verdict reached: no new paper trades, reports go on
     loop_s: float = _f("PM_LOOP_S", 2)                    # one tick every 2 s
     snap_every_s: float = _f("PM_SNAP_EVERY_S", 5)        # one stored snapshot per asset every 5 s
 

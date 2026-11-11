@@ -40,7 +40,9 @@ def daily_report(engine, now: float) -> str:
     date = datetime.fromtimestamp(now, engine.tz).strftime("%a %d %b")
 
     L = [f"🎯 <b>Polymarket · {escape(date)}</b> (PAPER)"]
-    if day["n"]:
+    if not getattr(cfg, "trade", True):
+        L.append("15-min bot: stopped, verdict reached (no new paper trades)")
+    elif day["n"]:
         L.append(f"24 h: {day['n']} trades · {day['w'] / day['n']:.0%} won · <b>{_usd(day['pnl'])}</b>"
                  f" (fees {_usd(day['fees'], False)})")
     else:

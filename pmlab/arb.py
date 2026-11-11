@@ -15,6 +15,11 @@ def legs_of(event: dict) -> list[dict] | None:
     legs = []
     for m in event.get("markets") or []:
         if m.get("closed"):
+            try:                                   # an outcome that already resolved YES: the others can only lose
+                if float((maybe_json(m.get("outcomePrices")) or [0])[0]) > 0.5:
+                    return None
+            except (TypeError, ValueError, IndexError):
+                return None
             continue
         if not (m.get("active") and m.get("acceptingOrders") and m.get("enableOrderBook", True)) or m.get("negRiskOther"):
             return None
@@ -116,7 +121,10 @@ class Arb:
 def summary(store, since: float) -> dict:
     r = store.one("SELECT COUNT(*) n, COALESCE(SUM(captured),0) c, COALESCE(SUM(profit_counted),0) p "
                   "FROM arb WHERE ts>=?", since)
-    return {"seen": r["n"], "captured": r["c"], "profit": float(r["p"])}
+    top = store.q("SELECT title, COUNT(*) n, SUM(profit_counted) p FROM arb WHERE ts>=? AND captured=1 "
+                  "GROUP BY event_id ORDER BY p DESC LIMIT 5", since)
+    return {"seen": r["n"], "captured": r["c"], "profit": float(r["p"]),
+            "top": [[t["title"][:60], t["n"], round(float(t["p"]), 2)] for t in top]}
 
 
 def verdict(store, started: float, now: float) -> str:
